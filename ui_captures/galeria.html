@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galeria UI Captures — Versailles</title>
+<style>
+  :root{
+    --bg:#0f172a;
+    --card:#1e293b;
+    --card-hover:#334155;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --accent:#38bdf8;
+    --accent-hover:#7dd3fc;
+    --border:#334155;
+    --success:#22c55e;
+    --danger:#ef4444;
+    --warning:#f59e0b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh
+  }
+  .container{max-width:1200px;margin:0 auto;padding:2rem 1rem}
+  header{
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid var(--border);flex-wrap:wrap
+  }
+  h1{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;display:flex;align-items:center;gap:0.5rem}
+  h1 span{width:8px;height:8px;background:var(--accent);border-radius:50%;box-shadow:0 0 10px var(--accent)}
+  .stats{display:flex;gap:1rem;font-size:0.875rem;color:var(--muted)}
+  .stat b{color:var(--text);display:block;font-size:1rem}
+  .toolbar{display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap}
+  input.search{
+    flex:1;min-width:220px;padding:0.6rem 1rem;border:1px solid var(--border);border-radius:8px;
+    background:var(--card);color:var(--text);font-size:0.9rem
+  }
+  input.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(56,189,248,0.2)}
+  .chip{
+    padding:0.4rem 0.9rem;border:1px solid var(--border);border-radius:999px;background:var(--card);
+    color:var(--muted);font-size:0.85rem;cursor:pointer;transition:all .2s
+  }
+  .chip:hover,.chip.active{border-color:var(--accent);color:var(--text);background:rgba(56,189,248,0.1)}
+  .chip.active{color:var(--accent)}
+  .gallery{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem
+  }
+  .card{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--card);cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}
+  .card:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 12px 24px -6px rgba(0,0,0,0.4)}
+  .card img{width:100%;height:140px;object-fit:cover;display:block;transition:transform .3s}
+  .card:hover img{transform:scale(1.05)}
+  .card .label{
+    position:absolute;bottom:0;left:0;right:0;padding:0.5rem 0.75rem;
+    background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+  }
+  .card .badge{
+    position:absolute;top:6px;right:6px;font-size:0.65rem;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:var(--accent);border:1px solid rgba(56,189,248,0.3)
+  }
+  .empty{grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)}
+
+  /* Ollama status pill */
+  .status-pill{display:inline-flex;align-items:center;gap:0.5rem;padding:0.25rem 0.75rem;border-radius:999px;font-size:0.75rem;font-weight:600;border:1px solid transparent}
+  .status-pill.online{border-color:var(--success);background:rgba(34,197,94,0.15);color:var(--success)}
+  .status-pill.offline{border-color:var(--danger);background:rgba(239,68,68,0.15);color:var(--danger)}
+  .status-pill .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .status-pill.online .dot{background:var(--success);box-shadow:0 0 6px var(--success)}
+  .status-pill.offline .dot{background:var(--danger);box-shadow:0 0 6px var(--danger)}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,0.95);display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px)}
+  .modal.open{display:flex}
+  .modal-content{position:relative;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center}
+  .modal img{max-width:100%;max-height:75vh;display:block;border-radius:8px;box-shadow:0 20px 40px -10px rgba(0,0,0,0.6)}
+  .modal .caption{margin-top:0.75rem;font-size:0.9rem;color:var(--muted);text-align:center;max-width:60ch}
+  .modal .nav{position:absolute;top:50%;width:100%;display:flex;justify-content:space-between;transform:translateY(-50%);pointer-events:none;padding:0 1rem}
+  .modal .btn{pointer-events:all;background:rgba(15,23,42,0.6);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.5rem;cursor:pointer;backdrop-filter:blur(4px);transition:background .2s}
+  .modal .btn:hover{background:rgba(15,23,42,0.85);color:var(--accent)}
+  .modal .close{position:absolute;top:1rem;right:1rem;background:rgba(15,23,42,0.6);border:none;color:#fff;width:40px;height:40px;border-radius:50%;font-size:1.2rem;cursor:pointer;z-index:1100;backdrop-filter:blur(4px);transition:background .2s}
+  .modal .close:hover{background:rgba(15,23,42,0.9);color:var(--accent)}
+  .modal .meta{position:absolute;bottom:1rem;left:0;right:0;text-align:center;font-size:0.85rem;color:var(--muted);z-index:1100}
+  .modal .thumbbar{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);display:flex;gap:0.4rem;overflow-x:auto;z-index:1100;padding:0 4rem}
+  .modal .thumbbar::-webkit-scrollbar{height:6px}
+  .modal .thumbbar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .modal .thumb{width:36px;height:36px;object-fit:cover;border-radius:6px;border:2px solid transparent;cursor:pointer;opacity:0.7;flex-shrink:0;transition:all .2s}
+  .modal .thumb:hover,.modal .thumb.active{opacity:1;border-color:var(--accent);transform:scale(1.15)}
+
+  /* Chat IA Local (Ollama) */
+  .chat-wrap{margin-top:3rem;border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden;display:grid;grid-template-columns:1fr;gap:0}
+  .chat-wrap h2{padding:1rem 1.25rem;font-size:1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.6rem;color:var(--text)}
+  .chat-wrap h2 .status-pill{margin-left:auto}
+  .chat-messages{height:260px;overflow-y:auto;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:0.75rem;background:#0b1121}
+  .chat-msg{max-width:80%;padding:0.6rem 0.9rem;border-radius:10px;font-size:0.9rem;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+  .chat-msg.user{align-self:flex-end;background:var(--accent);color:#000;border-bottom-right-radius:2px}
+  .chat-msg.assistant{align-self:flex-start;background:#1e293b;color:var(--text);border:1px solid var(--border);border-bottom-left-radius:2px}
+  .chat-msg.system{align-self:flex-start;font-size:0.75rem;color:var(--muted);background:transparent;border:none;padding:0.2rem 0}
+  .chat-msg.error{color:var(--danger);background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3)}
+  .chat-input{display:flex;gap:0.5rem;padding:0.75rem 1.25rem;border-top:1px solid var(--border);background:var(--card)}
+  .chat-input input{flex:1;padding:0.55rem 0.9rem;border:1px solid var(--border);border-radius:8px;background:#0b1121;color:var(--text);font-size:0.9rem}
+  .chat-input input:focus{outline:none;border-color:var(--accent)}
+  .chat-input button{padding:0.55rem 1rem;border:none;border-radius:8px;background:var(--accent);color:#000;font-weight:700;cursor:pointer;transition:background .2s}
+  .chat-input button:hover{background:var(--accent-hover)}
+  .chat-input button:disabled{opacity:0.5;cursor:not-allowed}
+  .chat-hint{font-size:0.75rem;color:var(--muted);padding:0 1.25rem 0.75rem}
+  .quick-actions{display:flex;gap:0.5rem;padding:0.5rem 1.25rem;border-top:1px solid var(--border);flex-wrap:wrap}
+  .quick-actions button{padding:0.35rem 0.7rem;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);font-size:0.75rem;cursor:pointer}
+  .quick-actions button:hover{border-color:var(--accent);color:var(--accent)}
+
+  footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted);font-size:0.8rem;text-align:center}
+
+  @media(max-width:640px){
+    .container{padding:1rem}
+    .header{flex-direction:column;align-items:flex-start}
+    .gallery{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+    .chat-msg{max-width:90%}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><span></span>Galeria UI Captures — Versailles</h1>
+    <div class="stats">
+      <div><b id="total">38</b> capturas</div>
+      <div><b id="visiveis">38</b> exibidas</div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <input type="text" class="search" id="search" placeholder="Buscar captura (ex: heroes, mapa, banco...)">
+    <button class="chip active" data-cat="todos">Todos</button>
+    <button class="chip" data-cat="principal">Janela Principal</button>
+    <button class="chip" data-cat="banco">Banco de Dados</button>
+    <button class="chip" data-cat="plugins">Plugins / Menus</button>
+  </div>
+
+  <div class="gallery" id="gallery"></div>
+  <div class="empty" id="empty" style="display:none">Nenhuma captura encontrada</div>
+
+  <!-- Chat IA Local Ollama -->
+  <div class="chat-wrap">
+    <h2>💬 IA Local (Ollama)</h2>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg system">Conectando ao Ollama local (http://localhost:11434)…</div>
+    </div>
+    <div class="chat-hint" id="chatHint">Modelos disponíveis: carregando…</div>
+    <div class="quick-actions">
+      <button onclick="askAboutCurrent('resume')">Resumir esta tela</button>
+      <button onclick="askAboutCurrent('elementos')">Listar elementos da UI</button>
+      <button onclick="askAboutCurrent('fluxo')">Descrever o fluxo</button>
+      <button onclick="askAboutCurrent('detalhes')">Quais campos aparecem?</button>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="Pergunte sobre as capturas de tela…" autocomplete="off">
+      <button id="chatSend">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <button class="btn close" id="btnClose">&times;</button>
+  <div class="modal-content">
+    <div class="nav">
+      <button class="btn" id="btnPrev">&#10094;</button>
+      <button class="btn" id="btnNext">&#10095;</button>
+    </div>
+    <img id="modalImg" src="" alt="">
+    <div class="caption" id="modalCaption"></div>
+    <div class="meta" id="modalMeta"></div>
+    <div class="thumbbar" id="thumbBar"></div>
+  </div>
+</div>
+
+<footer>Versailles — RPG Maker MZ · Capturas de interface geradas em 20/11/2026</footer>
+
+<script>
+const OLLAMA_BASE = 'http://localhost:11434';
+const IMAGES = [
+  {file:"00_janela_principal.png",cat:"principal",label:"Janela Principal"},
+  {file:"01_f5_modo_mapa.png",cat:"principal",label:"F5 — Modo Mapa"},
+  {file:"01_main_window_map_mode.png",cat:"principal",label:"Main Window — Modo Mapa"},
+  {file:"02_f6_modo_evento.png",cat:"principal",label:"F6 — Modo Evento"},
+  {file:"02_main_window_event_mode.png",cat:"principal",label:"Main Window — Modo Evento"},
+  {file:"03_db_herois.png",cat:"banco",label:"DB — Heróis"},
+  {file:"03_f9_banco_dados_aba_01.png",cat:"banco",label:"F9 — Banco de Dados Aba 01"},
+  {file:"03_f9_banco_dados_aba_02.png",cat:"banco",label:"F9 — Banco de Dados Aba 02"},
+  {file:"03_f9_banco_dados_aba_03.png",cat:"banco",label:"F9 — Banco de Dados Aba 03"},
+  {file:"03_f9_banco_dados_aba_04.png",cat:"banco",label:"F9 — Banco de Dados Aba 04"},
+  {file:"03_f9_banco_dados_aba_05.png",cat:"banco",label:"F9 — Banco de Dados Aba 05"},
+  {file:"03_f9_banco_dados_aba_06.png",cat:"banco",label:"F9 — Banco de Dados Aba 06"},
+  {file:"03_f9_banco_dados_aba_07.png",cat:"banco",label:"F9 — Banco de Dados Aba 07"},
+  {file:"03_f9_banco_dados_aba_08.png",cat:"banco",label:"F9 — Banco de Dados Aba 08"},
+  {file:"03_f9_banco_dados_aba_09.png",cat:"banco",label:"F9 — Banco de Dados Aba 09"},
+  {file:"03_f9_banco_dados_aba_10.png",cat:"banco",label:"F9 — Banco de Dados Aba 10"},
+  {file:"03_f9_banco_dados_aba_11.png",cat:"banco",label:"F9 — Banco de Dados Aba 11"},
+  {file:"03_f9_banco_dados_aba_12.png",cat:"banco",label:"F9 — Banco de Dados Aba 12"},
+  {file:"03_f9_banco_dados_aba_13.png",cat:"banco",label:"F9 — Banco de Dados Aba 13"},
+  {file:"03_f9_banco_dados_aba_14.png",cat:"banco",label:"F9 — Banco de Dados Aba 14"},
+  {file:"03_f9_banco_dados_aba_15.png",cat:"banco",label:"F9 — Banco de Dados Aba 15"},
+  {file:"04_db_classes.png",cat:"banco",label:"DB — Classes"},
+  {file:"04_f10_plugins.png",cat:"plugins",label:"F10 — Plugins"},
+  {file:"05_db_habilidades.png",cat:"banco",label:"DB — Habilidades"},
+  {file:"05_menus_superiores.png",cat:"plugins",label:"Menus Superiores"},
+  {file:"06_db_itens.png",cat:"banco",label:"DB — Itens"},
+  {file:"07_db_armas.png",cat:"banco",label:"DB — Armas"},
+  {file:"08_db_armaduras.png",cat:"banco",label:"DB — Armaduras"},
+  {file:"09_db_inimigos.png",cat:"banco",label:"DB — Inimigos"},
+  {file:"10_db_tropas.png",cat:"banco",label:"DB — Tropas"},
+  {file:"11_db_estados.png",cat:"banco",label:"DB — Estados"},
+  {file:"12_db_animacoes.png",cat:"banco",label:"DB — Animações"},
+  {file:"13_db_tilesets.png",cat:"banco",label:"DB — Tilesets"},
+  {file:"14_db_eventos_comuns.png",cat:"banco",label:"DB — Eventos Comuns"},
+  {file:"15_db_sistema1.png",cat:"banco",label:"DB — Sistema 1"},
+  {file:"16_db_sistema2.png",cat:"banco",label:"DB — Sistema 2"},
+  {file:"17_db_tipos_termos.png",cat:"banco",label:"DB — Tipos / Termos"},
+  {file:"18_plugin_manager.png",cat:"plugins",label:"Plugin Manager"}
+];
+
+let currentCat='todos';
+let availableModels=[];
+let selectedModel=null;
+let currentModalImage=null;
+
+/* ---------- Galeria ---------- */
+const gallery=document.getElementById('gallery');
+const empty=document.getElementById('empty');
+const search=document.getElementById('search');
+const totalEl=document.getElementById('total');
+const visiveisEl=document.getElementById('visiveis');
+totalEl.textContent=IMAGES.length;
+
+function render(filter='todos',q=''){
+  gallery.innerHTML='';
+  const qLower=q.toLowerCase();
+  const filtered=IMAGES.filter(img=>{
+    const catOk = filter==='todos' || img.cat===filter;
+    const txtOk = img.label.toLowerCase().includes(qLower) || img.file.toLowerCase().includes(qLower);
+    return catOk && txtOk;
+  });
+  visiveisEl.textContent=filtered.length;
+  if(filtered.length===0){empty.style.display='block';return;}
+  empty.style.display='none';
+  filtered.forEach((img,i)=>{
+    const card=document.createElement('article');
+    card.className='card';
+    card.innerHTML=`
+      <img src="${img.file}" alt="${img.label}" loading="lazy">
+      <div class="label">${img.label}</div>
+      <span class="badge">${i+1}</span>
+    `;
+    card.onclick=()=>openModal(filtered.indexOf(img));
+    gallery.appendChild(card);
+  });
+}
+render();
+search.addEventListener('input',e=>render(currentCat,search.value));
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click',()=>{
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    currentCat=chip.dataset.cat;
+    render(currentCat,search.value);
+  });
+});
+
+/* ---------- Modal ---------- */
+const modal=document.getElementById('modal');
+const modalImg=document.getElementById('modalImg');
+const modalCaption=document.getElementById('modalCaption');
+const modalMeta=document.getElementById('modalMeta');
+const thumbBar=document.getElementById('thumbBar');
+let currentIdx=0;
+
+function buildThumbs(list){
+  thumbBar.innerHTML='';
+  list.forEach((img,idx)=>{
+    const t=document.createElement('img');
+    t.src=img.file; t.className='thumb'; t.alt=img.label;
+    t.onclick=()=>{currentIdx=idx; updateModal(list);};
+    thumbBar.appendChild(t);
+  });
+}
+function updateModal(list){
+  const img=list[currentIdx];
+  modalImg.src=img.file;
+  modalImg.alt=img.label;
+  modalCaption.textContent=img.label;
+  modalMeta.textContent=`${currentIdx+1} / ${list.length} · ${img.file}`;
+  currentModalImage=img;
+  thumbBar.querySelectorAll('.thumb').forEach((t,i)=>{
+    t.classList.toggle('active',i===currentIdx);
+  });
+}
+function openModal(idx){
+  const q=search.value.toLowerCase();
+  const list=IMAGES.filter(img=>img.label.toLowerCase().includes(q)||img.file.toLowerCase().includes(q));
+  currentIdx=Math.min(Math.max(idx,0),list.length-1);
+  buildThumbs(list);
+  updateModal(list);
+  modal.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){
+  modal.classList.remove('open');
+  document.body.style.overflow='';
+  currentModalImage=null;
+}
+document.getElementById('btnClose').onclick=closeModal;
+document.getElementById('btnPrev').onclick=e=>{e.stopPropagation();currentIdx=(currentIdx-1+IMAGES.length)%IMAGES.length;updateModal(IMAGES.filter(i=>true));};
+document.getElementById('btnNext').onclick=e=>{e.stopPropagation();currentIdx=(currentIdx+1)%IMAGES.length;updateModal(IMAGES.filter(i=>true));};
+modal.onclick=e=>{if(e.target===modal)closeModal();};
+document.addEventListener('keydown',e=>{
+  if(!modal.classList.contains('open'))return;
+  if(e.key==='Escape')closeModal();
+  if(e.key==='ArrowLeft'){e.preventDefault();currentIdx=(currentIdx-1+IMAGES.length)%IMAGES.length;updateModal(IMAGES.filter(i=>true));}
+  if(e.key==='ArrowRight'){e.preventDefault();currentIdx=(currentIdx+1)%IMAGES.length;updateModal(IMAGES.filter(i=>true));}
+});
+
+/* ---------- Ollama ---------- */
+const chatMessages=document.getElementById('chatMessages');
+const chatHint=document.getElementById('chatHint');
+const chatInput=document.getElementById('chatInput');
+const chatSend=document.getElementById('chatSend');
+
+function chatStatus(cls,text){
+  const p=document.createElement('div');
+  p.className='chat-msg system '+cls;
+  p.textContent=text;
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+function chatUser(text){
+  const p=document.createElement('div');
+  p.className='chat-msg user';
+  p.textContent=text;
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+function chatAssistant(text){
+  const p=document.createElement('div');
+  p.className='chat-msg assistant';
+  p.textContent=text;
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+function chatError(text){
+  const p=document.createElement('div');
+  p.className='chat-msg error';
+  p.textContent=text;
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+async function loadOllama(){
+  try{
+    const res=await fetch(`${OLLAMA_BASE}/api/tags`,{signal:AbortSignal.timeout(3000)});
+    if(!res.ok) throw new Error('Ollama respondeu '+res.status);
+    const data=await res.json();
+    availableModels=(data.models||[]).map(m=>m.name);
+    if(availableModels.length===0){
+      chatStatus('offline','⚠️ Ollama online, mas nenhum modelo foi encontrado. Baixe um com: ollama pull <modelo>');
+      chatHint.textContent='Nenhum modelo disponível';
+      chatSend.disabled=true;
+      return;
+    }
+    selectedModel=availableModels[0];
+    chatHint.textContent='Modelos: '+availableModels.join(', ')+'  (ativo: '+selectedModel+')';
+    chatStatus('online','✅ Ollama conectado. Modelo ativo: '+selectedModel);
+  }catch(err){
+    chatStatus('offline','❌ Não foi possível conectar ao Ollama em '+OLLAMA_BASE);
+    chatHint.textContent='Verifique se o Ollama está rodando: ollama serve';
+    chatSend.disabled=true;
+    console.error(err);
+  }
+}
+
+async function ollamaGenerate(prompt, system){
+  const payload={
+    model: selectedModel,
+    system: system || 'Você é um assistente especialista em interface do RPG Maker MZ e Versailles Studio. Responda em português do Brasil, de forma direta e objetiva.',
+    prompt: prompt,
+    stream: false
+  };
+  const res=await fetch(`${OLLAMA_BASE}/api/generate`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload),
+    signal:AbortSignal.timeout(120000)
+  });
+  if(!res.ok) throw new Error('Ollama erro '+res.status);
+  const data=await res.json();
+  return data.response||'';
+}
+
+function buildImageContext(img){
+  const desc={
+    '00_janela_principal.png':'Janela principal do Versailles Studio.',
+    '01_f5_modo_mapa.png':'Modo mapa (tecla F5) do editor.',
+    '01_main_window_map_mode.png':'Janela principal em modo mapa.',
+    '02_f6_modo_evento.png':'Modo evento (tecla F6) do editor.',
+    '02_main_window_event_mode.png':'Janela principal em modo evento.',
+    '03_db_herois.png':'Banco de dados — aba Heróis.',
+    '04_db_classes.png':'Banco de dados — aba Classes.',
+    '05_db_habilidades.png':'Banco de dados — aba Habilidades.',
+    '06_db_itens.png':'Banco de dados — aba Itens.',
+    '07_db_armas.png':'Banco de dados — aba Armas.',
+    '08_db_armaduras.png':'Banco de dados — aba Armaduras.',
+    '09_db_inimigos.png':'Banco de dados — aba Inimigos.',
+    '10_db_tropas.png':'Banco de dados — aba Tropas.',
+    '11_db_estados.png':'Banco de dados — aba Estados.',
+    '12_db_animacoes.png':'Banco de dados — aba Animações.',
+    '13_db_tilesets.png':'Banco de dados — aba Tilesets.',
+    '14_db_eventos_comuns.png':'Banco de dados — aba Eventos Comuns.',
+    '15_db_sistema1.png':'Banco de dados — aba Sistema 1.',
+    '16_db_sistema2.png':'Banco de dados — aba Sistema 2.',
+    '17_db_tipos_termos.png':'Banco de dados — aba Tipos / Termos.',
+    '03_f9_banco_dados_aba_01.png':'Banco de dados F9 — aba 01.',
+    '03_f9_banco_dados_aba_02.png':'Banco de dados F9 — aba 02.',
+    '03_f9_banco_dados_aba_03.png':'Banco de dados F9 — aba 03.',
+    '03_f9_banco_dados_aba_04.png':'Banco de dados F9 — aba 04.',
+    '03_f9_banco_dados_aba_05.png':'Banco de dados F9 — aba 05.',
+    '03_f9_banco_dados_aba_06.png':'Banco de dados F9 — aba 06.',
+    '03_f9_banco_dados_aba_07.png':'Banco de dados F9 — aba 07.',
+    '03_f9_banco_dados_aba_08.png':'Banco de dados F9 — aba 08.',
+    '03_f9_banco_dados_aba_09.png':'Banco de dados F9 — aba 09.',
+    '03_f9_banco_dados_aba_10.png':'Banco de dados F9 — aba 10.',
+    '03_f9_banco_dados_aba_11.png':'Banco de dados F9 — aba 11.',
+    '03_f9_banco_dados_aba_12.png':'Banco de dados F9 — aba 12.',
+    '03_f9_banco_dados_aba_13.png':'Banco de dados F9 — aba 13.',
+    '03_f9_banco_dados_aba_14.png':'Banco de dados F9 — aba 14.',
+    '03_f9_banco_dados_aba_15.png':'Banco de dados F9 — aba 15.',
+    '04_f10_plugins.png':'Gerenciador de plugins (tecla F10).',
+    '05_menus_superiores.png':'Menus superiores da interface.',
+    '18_plugin_manager.png':'Plugin Manager do Versailles Studio.'
+  }[img.file]||'Captura de tela do Versailles Studio.';
+  return `A imagem selecionada é "${img.label}" (${img.file}). Contexto: ${desc}`;
+}
+
+async function sendChat(){
+  const text=chatInput.value.trim();
+  if(!text || !selectedModel) return;
+  chatInput.value='';
+  chatUser(text);
+  chatSend.disabled=true;
+  try{
+    const reply=await ollamaGenerate(text);
+    chatAssistant(reply);
+  }catch(err){
+    chatError('Erro ao consultar Ollama: '+err.message);
+  }finally{
+    chatSend.disabled=false;
+    chatInput.focus();
+  }
+}
+
+chatSend.onclick=sendChat;
+chatInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && !e.shiftKey){e.preventDefault();sendChat();}
+});
+
+window.askAboutCurrent=function(mode){
+  if(!currentModalImage){
+    chatError('Abra uma imagem no modal primeiro.');
+    return;
+  }
+  if(!selectedModel){
+    chatError('Nenhum modelo Ollama disponível.');
+    return;
+  }
+  const prompts={
+    resume:'Resuma em até 5 linhas o que esta tela do Versailles Studio mostra.',
+    elementos:'Liste os principais elementos de interface (botões, campos, tabelas, menus) visíveis nesta tela.',
+    fluxo:'Descreva o fluxo de uso desta tela: para que serve e como o usuário interage com ela.',
+    detalhes:'Quais campos, abas ou opções específicas aparecem nesta tela?'
+  };
+  const base=buildImageContext(currentModalImage);
+  const full=`${base}\n\nPergunta: ${prompts[mode]}\nResponda apenas com base no contexto da captura, sem inventar elementos que não apareçam na imagem.`;
+  chatUser('Sobre "'+currentModalImage.label+'": '+prompts[mode]);
+  chatSend.disabled=true;
+  ollamaGenerate(full).then(reply=>{chatAssistant(reply);}).catch(err=>{
+    chatError('Erro: '+err.message);
+  }).finally(()=>{chatSend.disabled=false;chatInput.focus();});
+};
+
+loadOllama();
+</script>
+</body>
+</html>
